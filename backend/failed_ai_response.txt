@@ -1,0 +1,780 @@
+[
+  {
+    "name": "Business Rule - Title Uniqueness and Format Validation",
+    "description": "Validates that the API enforces uniqueness and correct format for the 'title' field, rejecting duplicates and malformed values.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-XX-3277",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "Title must be unique and follow {ProgramCode}-{TypeCode}-{Sequence} format."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Business Rule - GrantProgramCode Conditional Requirement",
+    "description": "Validates that 'grantProgramCode' is required when hrsaWideFlag is 'N' and must be blank when hrsaWideFlag is 'Y'.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3278",
+      "grantProgramCode": "",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "grantProgramCode must be provided when hrsaWideFlag is 'N'."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Business Rule - TextContent HTML Validation",
+    "description": "Validates that 'textContent' must contain well-formed HTML and rejects malformed markup.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3279",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026", 
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "textContent must contain well-formed HTML."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Business Rule - TrackingTypeCode Value Enforcement",
+    "description": "Validates that 'trackingTypeCode' must be one of Term, Condition, or Reporting Requirement.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3280",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "InvalidType",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "trackingTypeCode must be one of: Term, Condition, Reporting Requirement."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Business Rule - HrsaWideFlag Value Validation",
+    "description": "Validates that 'hrsaWideFlag' must be either 'Y' or 'N', rejecting other values.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3281",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "X",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "hrsaWideFlag must be 'Y' or 'N'."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Happy Path - All Valid Fields",
+    "description": "Validates that the API accepts a request with all required and optional fields populated with valid data and returns a successful response.",
+    "category": "positive",
+    "request_body": {
+      "title": "A22-RR-3277",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59.3189621Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": true,
+      "message": "Created successfully",
+      "next": "https://hrsautl9-is.amer.reisystems.com/EDIS.Api/api/TermsAndConditions?lastPullDate=2026-01-24T02:50:59.3189621Z"
+    },
+    "expected_status": 200
+  },
+  {
+    "name": "Required Field Validation - Missing Title",
+    "description": "Validates that the API rejects requests missing the required 'title' field.",
+    "category": "negative",
+    "request_body": {
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "title is required."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Required Field Validation - Missing Multiple Required Fields",
+    "description": "Validates that the API rejects requests missing multiple required fields.",
+    "category": "negative",
+    "request_body": {
+      "grantProgramCode": "A22",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "inactiveDate": null,
+      "limit": 50,
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "title, textContent, name, trackingTypeCode, hrsaWideFlag, programType, activeDate, lastUpdateDate, lastPullDate are required."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Data Type Validation - Invalid Data Types",
+    "description": "Validates that the API rejects requests where fields are of incorrect data types.",
+    "category": "negative",
+    "request_body": {
+      "title": 3277,
+      "grantProgramCode": 22,
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": "fifty",
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "title, grantProgramCode, and limit must be of correct data type."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Negative Scenario - Empty Strings in Required Fields",
+    "description": "Validates that the API rejects empty strings for required fields.",
+    "category": "negative",
+    "request_body": {
+      "title": "",
+      "grantProgramCode": "A22",
+      "textContent": "",
+      "name": "",
+      "trackingTypeCode": "",
+      "hrsaWideFlag": "",
+      "defaultAwardActions": "",
+      "defaultAwardTransactions": "",
+      "programType": "",
+      "activeDate": "",
+      "inactiveDate": null,
+      "lastUpdateDate": "",
+      "limit": 50,
+      "lastPullDate": "",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "Required fields cannot be empty."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Negative Scenario - Null Values in Required Fields",
+    "description": "Validates that the API rejects null values for required fields.",
+    "category": "negative",
+    "request_body": {
+      "title": null,
+      "grantProgramCode": "A22",
+      "textContent": null,
+      "name": null,
+      "trackingTypeCode": null,
+      "hrsaWideFlag": null,
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": null,
+      "activeDate": null,
+      "inactiveDate": null,
+      "lastUpdateDate": null,
+      "limit": 50,
+      "lastPullDate": null,
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "Required fields cannot be null."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Negative Scenario - Special Characters in Title",
+    "description": "Validates that the API rejects titles with unsupported special characters.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-!@#",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "title contains unsupported characters."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Authentication Testing - Missing Auth Token",
+    "description": "Validates that the API rejects requests without an authentication token.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3277",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "Authentication token is missing."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Authentication Testing - Invalid Auth Token",
+    "description": "Validates that the API rejects requests with an invalid authentication token.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3277",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "Authentication token is invalid."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Authentication Testing - Expired Auth Token",
+    "description": "Validates that the API rejects requests with an expired authentication token.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3277",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "Authentication token is expired."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Authorization Testing - Insufficient Permissions",
+    "description": "Validates that the API rejects requests from users with insufficient permissions.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3277",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "User does not have sufficient permissions."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Authorization Testing - Unauthorized Access",
+    "description": "Validates that the API rejects requests from unauthorized users.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3277",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "User is unauthorized."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Header Validation - Missing Required Headers",
+    "description": "Validates that the API rejects requests missing required headers such as Content-Type.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3277",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "Required headers missing."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Header Validation - Invalid Content-Type",
+    "description": "Validates that the API rejects requests with invalid Content-Type header.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3277",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "Invalid Content-Type header."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Business Logic Testing - Invalid Award Action Codes",
+    "description": "Validates that the API ignores invalid codes in 'defaultAwardActions' and processes only valid codes.",
+    "category": "positive",
+    "request_body": {
+      "title": "A22-RR-3282",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,99",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59.3189621Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": true,
+      "message": "Created successfully. Invalid award action codes ignored.",
+      "next": "https://hrsautl9-is.amer.reisystems.com/EDIS.Api/api/TermsAndConditions?lastPullDate=2026-01-24T02:50:59.3189621Z"
+    },
+    "expected_status": 200
+  },
+  {
+    "name": "Business Logic Testing - Invalid Award Transaction Codes",
+    "description": "Validates that the API ignores invalid codes in 'defaultAwardTransactions' and processes only valid codes.",
+    "category": "positive",
+    "request_body": {
+      "title": "A22-RR-3283",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,99",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59.3189621Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": true,
+      "message": "Created successfully. Invalid award transaction codes ignored.",
+      "next": "https://hrsautl9-is.amer.reisystems.com/EDIS.Api/api/TermsAndConditions?lastPullDate=2026-01-24T02:50:59.3189621Z"
+    },
+    "expected_status": 200
+  },
+  {
+    "name": "Edge Case - Limit Exceeds Maximum",
+    "description": "Validates that the API rejects requests where 'limit' exceeds the maximum allowed value of 50.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3284",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 100,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "limit cannot exceed 50."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Edge Case - InactiveDate Before ActiveDate",
+    "description": "Validates that the API rejects requests where 'inactiveDate' is before 'activeDate'.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3285",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": "2012-05-11T00:00:00",
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "inactiveDate must be greater than activeDate."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Edge Case - ActiveDate in Future",
+    "description": "Validates that the API rejects requests where 'activeDate' is a future date.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3286",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2030-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "activeDate cannot be in the future."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Edge Case - LastPullDate Malformed",
+    "description": "Validates that the API rejects requests where 'lastPullDate' is malformed.",
+    "category": "negative",
+    "request_body": {
+      "title": "A22-RR-3287",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "24-01-2026T02:50:59Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": false,
+      "error": "lastPullDate must be a valid ISO-8601 datetime."
+    },
+    "expected_status": 400
+  },
+  {
+    "name": "Edge Case - Links.Next Populated When More Records Exist",
+    "description": "Validates that the API returns a valid 'links.next' URL when more than 50 records exist.",
+    "category": "positive",
+    "request_body": {
+      "title": "A22-RR-3288",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59.3189621Z",
+      "links": {
+        "next": "https://hrsautl9-is.amer.reisystems.com/EDIS.Api/api/TermsAndConditions?lastPullDate=2026-01-24T02:50:59.3189621Z"
+      }
+    },
+    "expected_response": {
+      "success": true,
+      "message": "Created successfully",
+      "next": "https://hrsautl9-is.amer.reisystems.com/EDIS.Api/api/TermsAndConditions?lastPullDate=2026-01-24T02:50:59.3189621Z"
+    },
+    "expected_status": 200
+  },
+  {
+    "name": "Edge Case - Links.Next Null When No More Records",
+    "description": "Validates that the API returns 'links.next' as null when no additional records exist.",
+    "category": "positive",
+    "request_body": {
+      "title": "A22-RR-3289",
+      "grantProgramCode": "A22",
+      "textContent": "<p>Performance data\u2026</p>",
+      "name": "BHW Performance Report",
+      "trackingTypeCode": "Reporting Requirement",
+      "hrsaWideFlag": "N",
+      "defaultAwardActions": "1,2,5",
+      "defaultAwardTransactions": "18,14",
+      "programType": "Grant",
+      "activeDate": "2012-06-11T00:00:00",
+      "inactiveDate": null,
+      "lastUpdateDate": "2026-02-02T18:04:24",
+      "limit": 50,
+      "lastPullDate": "2026-01-24T02:50:59.3189621Z",
+      "links": {
+        "next": null
+      }
+    },
+    "expected_response": {
+      "success": true,
+      "message": "Created successfully",
+      "next": null
+    },
+    "expected_status": 200
+  }
+]
