@@ -301,6 +301,9 @@ function EnhancedScenario1Tab({ mappingId }) {
     jsonSchema: ''
   })
   
+  // Endpoint filter state
+  const [filterEndpointId, setFilterEndpointId] = useState('')
+  
   // AI Root Cause Analysis State
   const [rootCauseData, setRootCauseData] = useState({})
   const [loadingAnalysis, setLoadingAnalysis] = useState({})
@@ -805,6 +808,11 @@ function EnhancedScenario1Tab({ mappingId }) {
     }
   }
 
+  // Filter scenarios based on selected endpoint
+  const filteredScenarios = filterEndpointId 
+    ? scenarios.filter(s => s.endpoint_id === parseInt(filterEndpointId))
+    : scenarios
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -870,7 +878,7 @@ function EnhancedScenario1Tab({ mappingId }) {
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     Running All...
-                </>
+                  </>
               ) : (
                 'Run All Scenarios'
               )}
@@ -880,14 +888,42 @@ function EnhancedScenario1Tab({ mappingId }) {
         </div>
       </div>
 
-      {scenarios.length === 0 ? (
+      {/* Endpoint Filter Dropdown */}
+      <div className="mb-4 flex items-center gap-3">
+        <label className="text-sm font-medium text-gray-700">Filter by Endpoint:</label>
+        <select
+          value={filterEndpointId}
+          onChange={(e) => setFilterEndpointId(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[300px]"
+        >
+          <option value="">All Endpoints</option>
+          {endpoints.map(endpoint => (
+            <option key={endpoint.id} value={endpoint.id}>
+              {endpoint.name} ({endpoint.method} {endpoint.path})
+            </option>
+          ))}
+        </select>
+        {filterEndpointId && (
+          <span className="text-sm text-gray-600">
+            Showing {filteredScenarios.length} of {scenarios.length} scenarios
+          </span>
+        )}
+      </div>
+
+      {filteredScenarios.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">No scenarios yet</p>
-          <p className="text-sm text-gray-400 mt-2">Upload an Excel file to generate AI scenarios, or click "Create Custom Scenario" above</p>
+          <p className="text-gray-500">
+            {filterEndpointId ? 'No scenarios found for selected endpoint' : 'No scenarios yet'}
+          </p>
+          <p className="text-sm text-gray-400 mt-2">
+            {filterEndpointId 
+              ? 'Try selecting a different endpoint or clear the filter' 
+              : 'Upload an Excel file to generate AI scenarios, or click "Create Custom Scenario" above'}
+          </p>
         </div>
       ) : (
         <div className="space-y-6">
-          {scenarios.map((scenario) => {
+          {filteredScenarios.map((scenario) => {
             const scenarioResults = results[scenario.id]
             const isRunning = runningScenarios.has(scenario.id)
 

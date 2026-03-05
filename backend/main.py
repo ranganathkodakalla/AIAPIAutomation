@@ -3180,6 +3180,256 @@ def get_dashboard_stats():
     finally:
         db.close()
 
+@app.get("/api/dashboard/export-excel")
+def export_dashboard_to_excel():
+    """Export execution results to Excel with multiple sheets: Overall + per-endpoint"""
+    db = next(get_db())
+    try:
+        from io import BytesIO
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.chart import PieChart, Reference
+        from openpyxl.chart.series import DataPoint
+        from fastapi.responses import StreamingResponse
+        
+        wb = Workbook()
+        wb.remove(wb.active)
+        
+        # Get all executions
+        executions = db.query(TestExecution).all()
+        total_executions = len(executions)
+        total_passed = sum(1 for ex in executions if ex.fail_count == 0 and ex.status == 'completed')
+        total_failed = sum(1 for ex in executions if ex.fail_count > 0 and ex.status == 'completed')
+        success_rate = round((total_passed / total_executions * 100) if total_executions > 0 else 0, 1)
+        
+        # Sheet 1: Overall Summary
+        ws_overall = wb.create_sheet("Overall Summary")
+        
+        # Header styling
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF")
+        
+        # Overall stats
+        ws_overall['A1'] = 'Metric'
+        ws_overall['B1'] = 'Value'
+        ws_overall['A1'].fill = header_fill
+        ws_overall['A1'].font = header_font
+        ws_overall['B1'].fill = header_fill
+        ws_overall['B1'].font = header_font
+        
+        ws_overall['A2'] = 'Total Executions'
+        ws_overall['B2'] = total_executions
+        ws_overall['A3'] = 'Total Passed'
+        ws_overall['B3'] = total_passed
+        ws_overall['A4'] = 'Total Failed'
+        ws_overall['B4'] = total_failed
+        ws_overall['A5'] = 'Success Rate (%)'
+        ws_overall['B5'] = success_rate
+        
+        # Add pie chart data in columns D-E for the chart
+        ws_overall['D1'] = 'Status'
+        ws_overall['E1'] = 'Count'
+        ws_overall['D1'].fill = header_fill
+        ws_overall['D1'].font = header_font
+        ws_overall['E1'].fill = header_fill
+        ws_overall['E1'].font = header_font
+        
+        ws_overall['D2'] = 'Passed'
+        ws_overall['E2'] = total_passed
+        ws_overall['D3'] = 'Failed'
+        ws_overall['E3'] = total_failed
+        
+        # Create pie chart
+        pie = PieChart()
+        pie.title = "Test Execution Results"
+        pie.style = 10
+        
+        # Data for pie chart
+        labels = Reference(ws_overall, min_col=4, min_row=2, max_row=3)
+        data = Reference(ws_overall, min_col=5, min_row=1, max_row=3)
+        pie.add_data(data, titles_from_data=True)
+        pie.set_categories(labels)
+        
+        # Customize data points colors
+        slice_colors = ['00B050', 'FF0000']  # Green for Passed, Red for Failed
+        for i, color in enumerate(slice_colors):
+            pt = DataPoint(idx=i)
+            pt.graphicalProperties.solidFill = color
+            pie.series[0].dPt.append(pt)
+        
+        # Position the chart next to the metrics (starting at column D, row 5)
+        ws_overall.add_chart(pie, "D5")
+        
+        # Issues found section
+        ws_overall['A7'] = 'Issues Found'
+        ws_overall['A7'].font = Font(bold=True, size=12)
+        ws_overall['A8'] = 'Scenario'
+        ws_overall['B8'] = 'Endpoint'
+        ws_overall['C8'] = 'Field'
+        ws_overall['D8'] = 'Expected'
+        ws_overall['E8'] = 'Actual'
+        ws_overall['F8'] = 'Status'
+        ws_overall['G8'] = 'Root Cause'
+        ws_overall['H8'] = 'Execution Date'
+        
+        for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']:
+            ws_overall[f'{col}8'].fill = header_fill
+            ws_overall[f'{col}8'].font = header_font
+        
+        # Get all failed validation results
+        failed_results = db.query(ValidationResult).filter(ValidationResult.status == 'fail').all()
+        row = 9
+        for result in failed_results:
+            scenario = db.query(TestScenario).filter(TestScenario.id == result.scenario_id).first()
+            execution = db.query(TestExecution).filter(TestExecution.id == result.execution_id).first()
+            endpoint = db.query(APIEndpoint).filter(APIEndpoint.id == scenario.endpoint_id).first() if scenario else None
+            
+            ws_overall[f'A{row}'] = scenario.name if scenario else 'Unknown'
+            ws_overall[f'B{row}'] = endpoint.name if endpoint else 'Unknown'
+            ws_overall[f'C{row}'] = result.field_name
+            ws_overall[f'D{row}'] = result.expected or ''
+            ws_overall[f'E{row}'] = result.actual or ''
+            ws_overall[f'F{row}'] = result.status
+            ws_overall[f'G{row}'] = result.root_cause or ''
+            ws_overall[f'H{row}'] = execution.execution_date.strftime('%Y-%m-%d %H:%M:%S') if execution else ''
+            row += 1
+        
+        # Auto-size columns
+        for col in ws_overall.columns:
+            max_length = 0
+            column = col[0].column_letter
+            for cell in col:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws_overall.column_dimensions[column].width = adjusted_width
+        
+        # Sheet 2+: Per-Endpoint Results
+        endpoints = db.query(APIEndpoint).all()
+        
+        for endpoint in endpoints:
+            # Get all scenarios for this endpoint
+            scenarios = db.query(TestScenario).filter(TestScenario.endpoint_id == endpoint.id).all()
+            scenario_ids = [s.id for s in scenarios]
+            
+            if not scenario_ids:
+                continue
+            
+            # Create sheet for this endpoint
+            sheet_name = endpoint.name[:31] if len(endpoint.name) <= 31 else endpoint.name[:28] + '...'
+            ws_endpoint = wb.create_sheet(sheet_name)
+            
+            # Endpoint info
+            ws_endpoint['A1'] = 'Endpoint Name'
+            ws_endpoint['B1'] = endpoint.name
+            ws_endpoint['A2'] = 'Method'
+            ws_endpoint['B2'] = endpoint.method
+            ws_endpoint['A3'] = 'Path'
+            ws_endpoint['B3'] = endpoint.path
+            
+            # Test results header
+            ws_endpoint['A5'] = 'Scenario Name'
+            ws_endpoint['B5'] = 'Description'
+            ws_endpoint['C5'] = 'Status'
+            ws_endpoint['D5'] = 'Pass Count'
+            ws_endpoint['E5'] = 'Fail Count'
+            ws_endpoint['F5'] = 'Response Time (ms)'
+            ws_endpoint['G5'] = 'Execution Date'
+            
+            for col in ['A', 'B', 'C', 'D', 'E', 'F', 'G']:
+                ws_endpoint[f'{col}5'].fill = header_fill
+                ws_endpoint[f'{col}5'].font = header_font
+            
+            # Get executions for this endpoint
+            endpoint_executions = db.query(TestExecution).filter(
+                TestExecution.scenario_id.in_(scenario_ids)
+            ).order_by(TestExecution.execution_date.desc()).all()
+            
+            row = 6
+            for execution in endpoint_executions:
+                scenario = db.query(TestScenario).filter(TestScenario.id == execution.scenario_id).first()
+                
+                ws_endpoint[f'A{row}'] = scenario.name if scenario else 'Unknown'
+                ws_endpoint[f'B{row}'] = scenario.description if scenario else ''
+                ws_endpoint[f'C{row}'] = 'PASS' if execution.fail_count == 0 else 'FAIL'
+                ws_endpoint[f'D{row}'] = execution.pass_count
+                ws_endpoint[f'E{row}'] = execution.fail_count
+                ws_endpoint[f'F{row}'] = execution.total_response_time_ms or 0
+                ws_endpoint[f'G{row}'] = execution.execution_date.strftime('%Y-%m-%d %H:%M:%S')
+                
+                # Color code status
+                if execution.fail_count == 0:
+                    ws_endpoint[f'C{row}'].fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+                else:
+                    ws_endpoint[f'C{row}'].fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+                
+                row += 1
+            
+            # Add failed validations for this endpoint
+            ws_endpoint[f'A{row+1}'] = 'Failed Validations'
+            ws_endpoint[f'A{row+1}'].font = Font(bold=True, size=12)
+            
+            ws_endpoint[f'A{row+2}'] = 'Scenario'
+            ws_endpoint[f'B{row+2}'] = 'Field'
+            ws_endpoint[f'C{row+2}'] = 'Expected'
+            ws_endpoint[f'D{row+2}'] = 'Actual'
+            ws_endpoint[f'E{row+2}'] = 'Root Cause'
+            ws_endpoint[f'F{row+2}'] = 'Suggested Action'
+            
+            for col in ['A', 'B', 'C', 'D', 'E', 'F']:
+                ws_endpoint[f'{col}{row+2}'].fill = header_fill
+                ws_endpoint[f'{col}{row+2}'].font = header_font
+            
+            # Get failed validations for this endpoint
+            failed_validations = db.query(ValidationResult).filter(
+                ValidationResult.scenario_id.in_(scenario_ids),
+                ValidationResult.status == 'fail'
+            ).all()
+            
+            detail_row = row + 3
+            for validation in failed_validations:
+                scenario = db.query(TestScenario).filter(TestScenario.id == validation.scenario_id).first()
+                ws_endpoint[f'A{detail_row}'] = scenario.name if scenario else 'Unknown'
+                ws_endpoint[f'B{detail_row}'] = validation.field_name
+                ws_endpoint[f'C{detail_row}'] = validation.expected or ''
+                ws_endpoint[f'D{detail_row}'] = validation.actual or ''
+                ws_endpoint[f'E{detail_row}'] = validation.root_cause or ''
+                ws_endpoint[f'F{detail_row}'] = validation.suggested_action or ''
+                detail_row += 1
+            
+            # Auto-size columns
+            for col in ws_endpoint.columns:
+                max_length = 0
+                column = col[0].column_letter
+                for cell in col:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)
+                ws_endpoint.column_dimensions[column].width = adjusted_width
+        
+        # Save to BytesIO
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        # Return as downloadable file
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename=test_execution_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            }
+        )
+        
+    finally:
+        db.close()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
