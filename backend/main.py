@@ -4516,6 +4516,20 @@ class SendEmailRequest(BaseModel):
     recipients: List[str]
     report_type: Optional[str] = "Test Execution Report"
 
+class ADSReportRequest(BaseModel):
+    user_story_id: int
+    include_test_results: Optional[bool] = False
+    test_results: Optional[Dict] = None
+
+class EnhancedADSReportRequest(BaseModel):
+    user_story_id: Optional[int] = None
+    iteration_path: Optional[str] = None
+    board_name: Optional[str] = None
+    include_test_results: Optional[bool] = False
+    test_results: Optional[Dict] = None
+    use_enhanced_styling: Optional[bool] = True
+    show_user_story_details: Optional[bool] = False
+
 @app.post("/api/email/send-report")
 async def send_email_report(request: SendEmailRequest):
     """Send email report with latest test execution results."""
@@ -4543,6 +4557,482 @@ async def send_email_report(request: SendEmailRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to send email report: {str(e)}")
+
+@app.post("/api/azure-devops/generate-report")
+async def generate_ads_automation_report(request: ADSReportRequest):
+    """
+    Generate Azure DevOps Automation Report for a specific user story.
+    Retrieves all bugs linked to the user story and generates a comprehensive HTML report.
+    """
+    try:
+        from ads_report_generator import ADSReportGenerator
+        
+        # Get bugs from Azure DevOps
+        bugs_result = azure_devops_service.get_bugs_by_user_story(request.user_story_id)
+        
+        if bugs_result.get('status') != 'success':
+            raise HTTPException(status_code=500, detail=bugs_result.get('message', 'Failed to retrieve bugs'))
+        
+        bugs = bugs_result.get('bugs', [])
+        
+        if not bugs:
+            return {
+                "status": "success",
+                "message": f"No bugs found for user story {request.user_story_id}",
+                "bug_count": 0,
+                "html_report": None
+            }
+        
+        # Generate report
+        report_generator = ADSReportGenerator()
+        processed_data = report_generator.process_bugs(bugs)
+        
+        # Generate HTML report
+        html_report = report_generator.generate_html_report(
+            processed_data=processed_data,
+            user_story_id=request.user_story_id,
+            test_results=request.test_results if request.include_test_results else None
+        )
+        
+        # Save report to file
+        reports_dir = Path("Reports/ADS_Reports")
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_filename = f"ADS_Report_US{request.user_story_id}_{timestamp}.html"
+        report_path = reports_dir / report_filename
+        
+        with open(report_path, 'w', encoding='utf-8') as f:
+            f.write(html_report)
+        
+        return {
+            "status": "success",
+            "message": f"Report generated successfully for user story {request.user_story_id}",
+            "bug_count": len(bugs),
+            "active_bugs": processed_data['metrics']['active_bugs'],
+            "resolved_bugs": processed_data['metrics']['resolved_bugs'],
+            "report_path": str(report_path),
+            "report_filename": report_filename,
+            "html_report": html_report,
+            "metrics": {
+                "total_bugs": processed_data['metrics']['total_bugs'],
+                "active_bugs": processed_data['metrics']['active_bugs'],
+                "resolved_bugs": processed_data['metrics']['resolved_bugs'],
+                "closed_bugs": processed_data['metrics']['closed_bugs'],
+                "avg_age_active": round(processed_data['metrics']['avg_age_active'], 1),
+                "avg_cycle_time": round(processed_data['metrics']['avg_cycle_time'], 1),
+                "by_category": dict(processed_data['metrics']['by_category'])
+            }
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")
+
+@app.get("/api/azure-devops/bugs/{user_story_id}")
+async def get_bugs_for_user_story(user_story_id: int):
+    """Get all bugs linked to a specific user story."""
+    try:
+        result = azure_devops_service.get_bugs_by_user_story(user_story_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve bugs: {str(e)}")
+
+@app.post("/api/azure-devops/generate-board-report")
+async def generate_board_report(board_name: str):
+    """Generate enhanced report for entire board by aggregating all user stories."""
+    try:
+        from enhanced_ads_report_generator import EnhancedADSReportGenerator
+        
+        ads_service = AzureDevOpsService()
+        
+        # Get all user stories from the board
+        user_stories_result = ads_service.get_board_user_stories(board_name)
+        
+        if user_stories_result.get('status') != 'success':
+            raise HTTPException(status_code=404, detail=user_stories_result.get('message', 'Failed to get user stories'))
+        
+        user_stories = user_stories_result.get('user_stories', [])
+        
+        if not user_stories:
+            raise HTTPException(status_code=404, detail=f"No user stories found for board: {board_name}")
+        
+        # Aggregate all bugs from all user stories
+        all_bugs = []
+        for story in user_stories:
+            bugs_result = ads_service.get_bugs_by_user_story(story['id'])
+            if bugs_result.get('status') == 'success' and bugs_result.get('bugs'):
+                all_bugs.extend(bugs_result['bugs'])
+        
+        if not all_bugs:
+            raise HTTPException(status_code=404, detail=f"No bugs found for board: {board_name}")
+        
+        # Generate enhanced report
+        report_generator = EnhancedADSReportGenerator()
+        processed_data = report_generator.process_bugs(all_bugs)
+        
+        # Generate HTML report without user story details
+        html_report = report_generator.generate_html_report(
+            processed_data=processed_data,
+            user_story=None,
+            test_results=None,
+            show_user_story_details=False
+        )
+        
+        # Save report to file
+        reports_dir = Path("Reports/ADS_Reports")
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_filename = f"Board_Report_{board_name.replace(' ', '_')}_{timestamp}.html"
+        report_path = reports_dir / report_filename
+        
+        with open(report_path, 'w', encoding='utf-8') as f:
+            f.write(html_report)
+        
+        return {
+            "status": "success",
+            "message": f"Board report generated successfully for {board_name}",
+            "report_filename": report_filename,
+            "report_path": str(report_path),
+            "html_report": html_report,
+            "total_user_stories": len(user_stories),
+            "total_bugs": processed_data['metrics']['total_bugs'],
+            "metrics": processed_data['metrics']
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate board report: {str(e)}")
+
+@app.post("/api/azure-devops/create-bugs-batch")
+async def create_bugs_batch(request: dict):
+    """Create multiple bugs in Azure DevOps linked to a User Story."""
+    try:
+        user_story_id = request.get('user_story_id')
+        bugs = request.get('bugs', [])
+        
+        if not user_story_id:
+            raise HTTPException(status_code=400, detail="User Story ID is required")
+        
+        if not bugs:
+            raise HTTPException(status_code=400, detail="No bugs provided")
+        
+        ads_service = AzureDevOpsService()
+        created_bugs = []
+        failed_bugs = []
+        
+        for bug_data in bugs:
+            try:
+                print(f"[DEBUG] Creating bug: {bug_data.get('title')}")
+                
+                # Map severity to Azure DevOps format
+                severity_map = {
+                    'Critical': '1 - Critical',
+                    'High': '2 - High',
+                    'Medium': '3 - Medium',
+                    'Low': '4 - Low'
+                }
+                severity = bug_data.get('severity', 'Medium')
+                mapped_severity = severity_map.get(severity, '3 - Medium')
+                
+                # Parse request and response payloads
+                try:
+                    request_payload = json.loads(bug_data.get('requestPayload', '{}')) if isinstance(bug_data.get('requestPayload'), str) else bug_data.get('requestPayload', {})
+                except:
+                    request_payload = {}
+                
+                try:
+                    response_payload = json.loads(bug_data.get('responsePayload', '{}')) if isinstance(bug_data.get('responsePayload'), str) else bug_data.get('responsePayload', {})
+                except:
+                    response_payload = {}
+                
+                # Prepare comprehensive failure data for bug creation
+                failure_data = {
+                    'title': bug_data.get('title', 'Test Failure'),
+                    'test_name': bug_data.get('title', 'Test Failure'),
+                    'scenario_name': bug_data.get('title', 'Test Failure'),
+                    'field_name': bug_data.get('field', 'N/A'),
+                    'endpoint': f"Endpoint ID: {bug_data.get('endpointId', 'N/A')}",
+                    'base_url': os.getenv('AZURE_DEVOPS_BASE_URL', ''),
+                    'environment': bug_data.get('environment', 'Test'),
+                    'timestamp': datetime.now().isoformat(),
+                    'execution_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'severity': mapped_severity,
+                    'priority': bug_data.get('priority', 2),
+                    'error_message': bug_data.get('description', ''),
+                    'expected': bug_data.get('expectedResult', 'N/A'),
+                    'actual': bug_data.get('actualResult', 'N/A'),
+                    'expected_result': bug_data.get('expectedResult', 'N/A'),
+                    'actual_result': bug_data.get('actualResult', 'N/A'),
+                    'expected_results': bug_data.get('expectedResult', 'N/A'),
+                    'actual_results': bug_data.get('actualResult', 'N/A'),
+                    'request_payload': request_payload,
+                    'response_payload': response_payload,
+                    'request_body': request_payload,
+                    'response_body': response_payload,
+                    'steps_to_reproduce': bug_data.get('reproSteps', ''),
+                    'test_severity': bug_data.get('severity', 'Medium'),
+                    'api_name': f"Scenario {bug_data.get('scenarioId', 'N/A')}",
+                    'failure_timestamp': datetime.now().isoformat()
+                }
+                
+                print(f"[DEBUG] Failure data prepared: {failure_data.get('title')}")
+                
+                # Create bug in Azure DevOps with O&M classification
+                result = ads_service.create_bug_from_failure(
+                    failure_data=failure_data,
+                    work_item_type="Bug",
+                    tags=bug_data.get('tags', ['Automated Test']),
+                    assigned_to=bug_data.get('assignedTo', None) if bug_data.get('assignedTo') else None,
+                    classification="O&M"  # Set classification to O&M
+                )
+                
+                print(f"[DEBUG] Bug creation result: {result}")
+                
+                if result.get('status') == 'success':
+                    bug_id = result.get('work_item_id')  # Changed from bug_id to work_item_id
+                    print(f"[DEBUG] Bug created successfully with ID: {bug_id}")
+                    
+                    # Link bug to user story
+                    link_result = ads_service.link_bug_to_user_story(bug_id, user_story_id)
+                    print(f"[DEBUG] Link result: {link_result}")
+                    
+                    created_bugs.append({
+                        'bug_id': bug_id,
+                        'title': bug_data.get('title'),
+                        'url': result.get('work_item_url'),
+                        'linked': link_result.get('status') == 'success'
+                    })
+                else:
+                    print(f"[DEBUG] Bug creation failed: {result.get('message')}")
+                    failed_bugs.append({
+                        'title': bug_data.get('title'),
+                        'error': result.get('message', 'Unknown error')
+                    })
+                    
+            except Exception as e:
+                print(f"[DEBUG] Exception creating bug: {str(e)}")
+                failed_bugs.append({
+                    'title': bug_data.get('title', 'Unknown'),
+                    'error': str(e)
+                })
+        
+        return {
+            "status": "success",
+            "created_count": len(created_bugs),
+            "failed_count": len(failed_bugs),
+            "created_bugs": created_bugs,
+            "failed_bugs": failed_bugs,
+            "user_story_id": user_story_id
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create bugs: {str(e)}")
+
+@app.post("/api/azure-devops/generate-enhanced-report-multi")
+async def generate_enhanced_ads_report_multi(request: dict):
+    """
+    Generate Enhanced Azure DevOps Automation Report for multiple user stories.
+    Accepts comma-separated user story IDs and combines bugs from all stories.
+    """
+    try:
+        from enhanced_ads_report_generator import EnhancedADSReportGenerator
+        
+        user_story_ids = request.get('user_story_ids', [])
+        if not user_story_ids:
+            raise HTTPException(status_code=400, detail="User Story IDs are required")
+        
+        all_bugs = []
+        user_stories = []
+        
+        # Fetch bugs from all user stories
+        print(f"[DEBUG] Fetching bugs from {len(user_story_ids)} user stories: {user_story_ids}")
+        for user_story_id in user_story_ids:
+            # Get User Story details
+            user_story_result = azure_devops_service.get_user_story_details(user_story_id)
+            if user_story_result.get('status') == 'success':
+                user_stories.append(user_story_result.get('user_story'))
+            
+            # Get bugs from Azure DevOps
+            bugs_result = azure_devops_service.get_bugs_by_user_story(user_story_id)
+            if bugs_result.get('status') == 'success':
+                bugs = bugs_result.get('bugs', [])
+                print(f"[DEBUG] User story {user_story_id}: Found {len(bugs)} bugs")
+                all_bugs.extend(bugs)
+            else:
+                print(f"[DEBUG] User story {user_story_id}: Error - {bugs_result.get('message')}")
+        
+        if not all_bugs:
+            return {
+                "status": "success",
+                "message": f"No bugs found for user stories {user_story_ids}",
+                "bug_count": 0,
+                "html_report": None,
+                "user_stories": user_stories
+            }
+        
+        # Generate enhanced report with combined bugs
+        print(f"[DEBUG] Generating report for {len(all_bugs)} bugs from {len(user_story_ids)} user stories")
+        report_generator = EnhancedADSReportGenerator()
+        processed_data = report_generator.process_bugs(all_bugs)
+        print(f"[DEBUG] Processed data metrics: {processed_data.get('metrics', {})}")
+        
+        # Use first user story for report header (or None if no stories found)
+        primary_user_story = user_stories[0] if user_stories else None
+        print(f"[DEBUG] Primary user story: {primary_user_story.get('id') if primary_user_story else 'None'}")
+        
+        # Generate HTML report
+        try:
+            html_report = report_generator.generate_html_report(
+                processed_data=processed_data,
+                user_story=primary_user_story,
+                test_results=request.get('test_results') if request.get('include_test_results') else None,
+                show_user_story_details=request.get('show_user_story_details', False)
+            )
+            print(f"[DEBUG] HTML report generated successfully, length: {len(html_report)}")
+        except Exception as e:
+            print(f"[ERROR] Failed to generate HTML report: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise
+        
+        # Save report
+        report_dir = Path("reports")
+        report_dir.mkdir(exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ids_str = "_".join(map(str, user_story_ids[:3]))  # Use first 3 IDs in filename
+        report_filename = f"ADS_Report_UserStories_{ids_str}_{timestamp}.html"
+        report_path = report_dir / report_filename
+        
+        with open(report_path, 'w', encoding='utf-8') as f:
+            f.write(html_report)
+        
+        return {
+            "status": "success",
+            "message": f"Report generated successfully for {len(user_story_ids)} user stories with {len(all_bugs)} total bugs",
+            "bug_count": len(all_bugs),
+            "user_story_count": len(user_stories),
+            "report_filename": report_filename,
+            "report_path": str(report_path),
+            "html_report": html_report,
+            "metrics": processed_data['metrics']
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate multi-story report: {str(e)}")
+
+@app.post("/api/azure-devops/generate-enhanced-report")
+async def generate_enhanced_ads_report(request: EnhancedADSReportRequest):
+    """
+    Generate Enhanced Azure DevOps Automation Report with advanced visualizations.
+    Supports User Story details, Board queries, and modern styling.
+    """
+    try:
+        from enhanced_ads_report_generator import EnhancedADSReportGenerator
+        
+        # Get User Story details
+        if not request.user_story_id:
+            raise HTTPException(status_code=400, detail="User Story ID is required")
+        
+        user_story_result = azure_devops_service.get_user_story_details(request.user_story_id)
+        
+        if user_story_result.get('status') != 'success':
+            raise HTTPException(status_code=500, detail=user_story_result.get('message', 'Failed to retrieve user story'))
+        
+        user_story = user_story_result.get('user_story')
+        
+        # Get bugs from Azure DevOps
+        bugs_result = azure_devops_service.get_bugs_by_user_story(request.user_story_id)
+        
+        if bugs_result.get('status') != 'success':
+            raise HTTPException(status_code=500, detail=bugs_result.get('message', 'Failed to retrieve bugs'))
+        
+        bugs = bugs_result.get('bugs', [])
+        
+        if not bugs:
+            return {
+                "status": "success",
+                "message": f"No bugs found for user story {request.user_story_id}",
+                "bug_count": 0,
+                "html_report": None,
+                "user_story": user_story
+            }
+        
+        # Generate enhanced report
+        report_generator = EnhancedADSReportGenerator()
+        processed_data = report_generator.process_bugs(bugs)
+        
+        # Generate HTML report with User Story details
+        html_report = report_generator.generate_html_report(
+            processed_data=processed_data,
+            user_story=user_story,
+            test_results=request.test_results if request.include_test_results else None,
+            show_user_story_details=request.show_user_story_details
+        )
+        
+        # Save report to file
+        reports_dir = Path("Reports/ADS_Reports")
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_filename = f"Enhanced_ADS_Report_US{request.user_story_id}_{timestamp}.html"
+        report_path = reports_dir / report_filename
+        
+        with open(report_path, 'w', encoding='utf-8') as f:
+            f.write(html_report)
+        
+        return {
+            "status": "success",
+            "message": f"Enhanced report generated successfully for user story {request.user_story_id}",
+            "bug_count": len(bugs),
+            "active_bugs": processed_data['metrics']['active_bugs'],
+            "resolved_bugs": processed_data['metrics']['resolved_bugs'],
+            "report_path": str(report_path),
+            "report_filename": report_filename,
+            "html_report": html_report,
+            "user_story": {
+                "id": user_story['id'],
+                "title": user_story['title'],
+                "state": user_story['state'],
+                "story_points": user_story.get('story_points', 0),
+                "priority": user_story.get('priority', 3),
+                "business_value": user_story.get('business_value', 0),
+                "assigned_to": user_story.get('assigned_to', 'Unassigned')
+            },
+            "metrics": {
+                "total_bugs": processed_data['metrics']['total_bugs'],
+                "active_bugs": processed_data['metrics']['active_bugs'],
+                "resolved_bugs": processed_data['metrics']['resolved_bugs'],
+                "closed_bugs": processed_data['metrics']['closed_bugs'],
+                "avg_age_active": round(processed_data['metrics']['avg_age_active'], 1),
+                "avg_cycle_time": round(processed_data['metrics']['avg_cycle_time'], 1),
+                "by_category": dict(processed_data['metrics']['by_category'])
+            }
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to generate enhanced report: {str(e)}")
+
+@app.get("/api/azure-devops/board/user-stories")
+async def get_board_user_stories(iteration_path: Optional[str] = None, board_name: Optional[str] = None):
+    """Get user stories from Azure DevOps Board."""
+    try:
+        result = azure_devops_service.get_board_user_stories(board_name=board_name, iteration_path=iteration_path)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve board user stories: {str(e)}")
+
+@app.get("/api/azure-devops/user-story/{user_story_id}")
+async def get_user_story_details_endpoint(user_story_id: int):
+    """Get detailed information about a specific user story."""
+    try:
+        result = azure_devops_service.get_user_story_details(user_story_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve user story details: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
