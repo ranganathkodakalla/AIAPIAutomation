@@ -94,20 +94,26 @@ class EmailService:
     def _build_email_body(self, results: Dict, recipients: List[str]) -> str:
         """Generate a clean, professional HTML email body."""
         
+        # Debug logging
+        print(f"[DEBUG] Email body builder received results keys: {results.keys()}")
+        print(f"[DEBUG] Overall summary: {results.get('overall_summary', {})}")
+        
         # Detect report type
         report_type = results.get('overall_summary', {}).get('report_type', 'test_execution')
+        print(f"[DEBUG] Detected report type: {report_type}")
         
         # Extract metrics based on report type
         if report_type == 'validation':
             # Validation report metrics
             overall = results.get('overall_summary', {})
-            success_count = overall.get('total_passed', 0)  # Fields Correct
-            failure_count = overall.get('total_failed', 0)  # Fields Incorrect
-            total_count = overall.get('total_fields', 0)  # Total Fields
-            total_announcements = overall.get('total_executions', 0)  # Announcements
+            success_count = overall.get('total_passed', 0)  # Data Elements Correct
+            failure_count = overall.get('total_failed', 0)  # Data Elements Incorrect
+            total_count = overall.get('total_fields', 0)  # Data Elements Read
+            total_announcements = overall.get('total_announcements', 0)  # Total Announcements
             success_rate = overall.get('success_rate', 0)
             report_label = "Field Validation Report"
-            test_label = "Fields Validated"
+            test_label = "Data Elements Validated"
+            print(f"[DEBUG] Validation metrics - Total: {total_count}, Passed: {success_count}, Failed: {failure_count}, Rate: {success_rate}%")
         else:
             # Test execution report metrics
             success_count = results.get('success_count', 0)
@@ -117,6 +123,7 @@ class EmailService:
             success_rate = results.get('success_rate', 0)
             report_label = "Test Execution Report"
             test_label = "Tests Executed"
+            print(f"[DEBUG] Test execution metrics - Total: {total_count}, Passed: {success_count}, Failed: {failure_count}, Rate: {success_rate}%")
         
         metrics = results.get('metrics', {})
         issues = results.get('issues', [])

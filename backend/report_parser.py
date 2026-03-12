@@ -83,12 +83,15 @@ class ReportParser:
                     # Validation Report metrics
                     elif "Total Announcements Received" in metric_name:
                         summary["report_type"] = "validation"
-                        summary["total_executions"] = int(row.iloc[1]) if pd.notna(row.iloc[1]) else 0
-                    elif "Fields Read" in metric_name:
+                        summary["total_announcements"] = int(row.iloc[1]) if pd.notna(row.iloc[1]) else 0
+                    elif "Announcements Read" in metric_name:
+                        summary["announcements_read"] = int(row.iloc[1]) if pd.notna(row.iloc[1]) else 0
+                    elif "Data Elements Read" in metric_name:
                         summary["total_fields"] = int(row.iloc[1]) if pd.notna(row.iloc[1]) else 0
-                    elif "Fields Correct" in metric_name:
+                        summary["total_executions"] = int(row.iloc[1]) if pd.notna(row.iloc[1]) else 0
+                    elif "Data Elements Correct" in metric_name:
                         summary["total_passed"] = int(row.iloc[1]) if pd.notna(row.iloc[1]) else 0
-                    elif "Fields Incorrect" in metric_name:
+                    elif "Data Elements Incorrect" in metric_name:
                         summary["total_failed"] = int(row.iloc[1]) if pd.notna(row.iloc[1]) else 0
                     elif "% Correct" in metric_name:
                         val = str(row.iloc[1]).replace('%', '').strip()
@@ -295,6 +298,7 @@ class ReportParser:
             "failure_count": overall.get("total_failed", 0),
             "total_count": overall.get("total_executions", 0),
             "success_rate": overall.get("success_rate", 0),
+            "overall_summary": overall,  # Include full overall summary for email service
             "metrics": {
                 "Total Endpoints Tested": parsed_data.get("total_endpoints", 0),
                 "Total Test Scenarios": total_scenarios,
