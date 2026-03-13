@@ -172,6 +172,8 @@ class APIEndpoint(Base):
     path = Column(String, default="/")
     auth_type = Column(String)
     auth_token = Column(String)
+    cert_path = Column(String)  # Path to certificate file (.pfx or .p12)
+    cert_password = Column(String)  # Password for certificate
     headers = Column(Text)
     default_request_body = Column(Text)
     timeout_ms = Column(Integer, default=5000)
@@ -456,6 +458,8 @@ class APIEndpointCreate(BaseModel):
     path: str = "/"
     auth_type: Optional[str] = None
     auth_token: Optional[str] = None
+    cert_path: Optional[str] = None
+    cert_password: Optional[str] = None
     headers: Optional[str] = None
     default_request_body: Optional[str] = None
     timeout_ms: int = 5000
@@ -475,6 +479,8 @@ class APIEndpointResponse(BaseModel):
     path: str
     auth_type: Optional[str]
     auth_token: Optional[str]
+    cert_path: Optional[str]
+    cert_password: Optional[str]
     headers: Optional[str]
     default_request_body: Optional[str]
     timeout_ms: int
@@ -556,6 +562,8 @@ async def test_endpoint_and_get_response(endpoint_url: str, endpoint_obj=None):
         
         # Prepare headers
         headers = {}
+        cert = None
+        use_cert_auth = False
         
         # Add authentication if endpoint object is provided
         if endpoint_obj:
@@ -573,31 +581,115 @@ async def test_endpoint_and_get_response(endpoint_url: str, endpoint_obj=None):
             elif endpoint_obj.auth_type == 'api_key' and endpoint_obj.auth_token:
                 headers['X-API-Key'] = endpoint_obj.auth_token
                 print(f"Added API Key authentication")
+            elif endpoint_obj.auth_type == 'certificate':
+                # Handle certificate authentication - use requests library instead of httpx
+                use_cert_auth = True
+                cert_path = endpoint_obj.cert_path
+                cert_password = endpoint_obj.cert_password
+                
+                print(f"[DEBUG] Certificate auth detected: path={cert_path}, has_password={bool(cert_password)}")
+                
+                if cert_path:
+                    from pathlib import Path
+                    if Path(cert_path).exists():
+                        if cert_path.lower().endswith(('.pfx', '.p12')):
+                            try:
+                                import tempfile
+                                from cryptography.hazmat.primitives.serialization import pkcs12, Encoding, PrivateFormat, NoEncryption
+                                
+                                # Read and convert PKCS12 to PEM
+                                with open(cert_path, 'rb') as f:
+                                    p12_data = f.read()
+                                
+                                password_bytes = cert_password.encode() if cert_password else None
+                                private_key, certificate, additional_certs = pkcs12.load_key_and_certificates(
+                                    p12_data, 
+                                    password_bytes
+                                )
+                                
+                                cert_pem = certificate.public_bytes(Encoding.PEM)
+                                key_pem = private_key.private_bytes(
+                                    encoding=Encoding.PEM,
+                                    format=PrivateFormat.TraditionalOpenSSL,
+                                    encryption_algorithm=NoEncryption()
+                                )
+                                
+                                cert_file = tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pem')
+                                key_file = tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pem')
+                                
+                                cert_file.write(cert_pem)
+                                cert_file.close()
+                                
+                                key_file.write(key_pem)
+                                key_file.close()
+                                
+                                cert = (cert_file.name, key_file.name)
+                                print(f"[DEBUG] Certificate converted to PEM: cert={cert_file.name}, key={key_file.name}")
+                            except Exception as e:
+                                print(f"Error loading certificate: {str(e)}")
+                                import traceback
+                                traceback.print_exc()
+                        else:
+                            cert = cert_path
+                            print(f"[DEBUG] Using PEM certificate directly: {cert_path}")
+                    else:
+                        print(f"Certificate file not found: {cert_path}")
+                else:
+                    print(f"[DEBUG] No certificate path provided")
         
-        # Make request to the endpoint
-        async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
+        # Use requests library for certificate authentication (httpx has issues with client certs)
+        print(f"[DEBUG] use_cert_auth={use_cert_auth}, cert={cert is not None}")
+        if use_cert_auth and cert:
+            import requests
             method = endpoint_obj.method.upper() if endpoint_obj and endpoint_obj.method else 'GET'
             
-            if method == 'GET':
-                response = await client.get(endpoint_url, headers=headers)
-            elif method == 'POST':
-                response = await client.post(endpoint_url, headers=headers)
-            else:
-                response = await client.request(method, endpoint_url, headers=headers)
+            print(f"Making {method} request with certificate authentication...")
+            response = requests.request(
+                method=method,
+                url=endpoint_url,
+                headers=headers,
+                cert=cert,
+                verify=False,
+                timeout=30
+            )
             
             response_data = {
                 "status_code": response.status_code,
                 "headers": dict(response.headers),
-                "body": response.text[:1000] if response.text else "",  # Limit body size
+                "body": response.text[:1000] if response.text else "",
                 "content_type": response.headers.get("content-type", ""),
                 "response_size": len(response.content)
             }
             
             print(f"Endpoint response: {response.status_code} - {len(response.content)} bytes")
             return response_data
+        else:
+            # Use httpx for non-certificate authentication
+            async with httpx.AsyncClient(timeout=30.0, verify=False) as client:
+                method = endpoint_obj.method.upper() if endpoint_obj and endpoint_obj.method else 'GET'
+                
+                if method == 'GET':
+                    response = await client.get(endpoint_url, headers=headers)
+                elif method == 'POST':
+                    response = await client.post(endpoint_url, headers=headers)
+                else:
+                    response = await client.request(method, endpoint_url, headers=headers)
+                
+                response_data = {
+                    "status_code": response.status_code,
+                    "headers": dict(response.headers),
+                    "body": response.text[:1000] if response.text else "",
+                    "content_type": response.headers.get("content-type", ""),
+                    "response_size": len(response.content)
+                }
+                
+                print(f"Endpoint response: {response.status_code} - {len(response.content)} bytes")
+                return response_data
             
     except Exception as e:
+        import traceback
         print(f"Error testing endpoint {endpoint_url}: {str(e)}")
+        print(f"Full traceback:\n{traceback.format_exc()}")
         return {
             "error": str(e),
             "status_code": None,
@@ -689,9 +781,26 @@ Generate 5 scenarios specifically for validating the custom business rules provi
         if mapping.selected_endpoint:
             print(f"Testing selected endpoint: {mapping.selected_endpoint}")
             # Find the endpoint object to get authentication details
+            # Need to handle URLs with query parameters
+            from urllib.parse import urlparse
+            parsed_url = urlparse(mapping.selected_endpoint)
+            base_url_with_path = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
+            
+            # Try to find endpoint by matching base_url and path (without query params)
             endpoint_obj = db.query(APIEndpoint).filter(
-                (APIEndpoint.base_url + APIEndpoint.path) == mapping.selected_endpoint
+                (APIEndpoint.base_url + APIEndpoint.path) == base_url_with_path
             ).first()
+            
+            # If not found, try matching just by base_url
+            if not endpoint_obj:
+                endpoint_obj = db.query(APIEndpoint).filter(
+                    APIEndpoint.base_url == f"{parsed_url.scheme}://{parsed_url.netloc}"
+                ).first()
+            
+            print(f"[DEBUG] Found endpoint object: {endpoint_obj is not None}")
+            if endpoint_obj:
+                print(f"[DEBUG] Endpoint auth_type: {endpoint_obj.auth_type}, cert_path: {endpoint_obj.cert_path}")
+            
             endpoint_response = await test_endpoint_and_get_response(mapping.selected_endpoint, endpoint_obj)
             
             if endpoint_response:
@@ -3283,6 +3392,8 @@ def create_endpoint(endpoint: APIEndpointCreate):
             path=endpoint.path,
             auth_type=endpoint.auth_type,
             auth_token=endpoint.auth_token,
+            cert_path=endpoint.cert_path,
+            cert_password=endpoint.cert_password,
             headers=endpoint.headers,
             timeout_ms=endpoint.timeout_ms,
             expected_status=endpoint.expected_status,
@@ -3378,6 +3489,93 @@ async def test_endpoint_connection(endpoint_data: dict):
         elif auth_type == 'api_key' and auth_token:
             headers['X-API-Key'] = auth_token
         
+        # Handle certificate authentication
+        cert = None
+        if auth_type == 'certificate':
+            cert_path = endpoint_data.get('cert_path', '')
+            cert_password = endpoint_data.get('cert_password', '')
+            
+            # Debug logging
+            print(f"[DEBUG] Certificate auth selected")
+            print(f"[DEBUG] cert_path received: '{cert_path}'")
+            print(f"[DEBUG] cert_password received: '{cert_password[:5]}...' (length: {len(cert_password)})")
+            print(f"[DEBUG] Full endpoint_data keys: {endpoint_data.keys()}")
+            
+            if cert_path:
+                # Check if certificate file exists
+                from pathlib import Path
+                if not Path(cert_path).exists():
+                    return {
+                        "success": False,
+                        "message": f"❌ Certificate file not found: {cert_path}",
+                        "error": "Certificate file does not exist at the specified path"
+                    }
+                
+                # Handle .pfx/.p12 files - requests library doesn't support them directly
+                # We need to convert to PEM format or use them as-is
+                if cert_path.lower().endswith(('.pfx', '.p12')):
+                    try:
+                        # For .pfx/.p12 with password, we need to convert to PEM format
+                        # The requests library expects PEM format, not PKCS12
+                        import tempfile
+                        from cryptography.hazmat.primitives.serialization import pkcs12, Encoding, PrivateFormat, NoEncryption
+                        
+                        # Read the PKCS12 file
+                        with open(cert_path, 'rb') as f:
+                            p12_data = f.read()
+                        
+                        # Load PKCS12 with password (using cryptography library)
+                        password_bytes = cert_password.encode() if cert_password else None
+                        private_key, certificate, additional_certs = pkcs12.load_key_and_certificates(
+                            p12_data, 
+                            password_bytes
+                        )
+                        
+                        # Convert to PEM format
+                        cert_pem = certificate.public_bytes(Encoding.PEM)
+                        key_pem = private_key.private_bytes(
+                            encoding=Encoding.PEM,
+                            format=PrivateFormat.TraditionalOpenSSL,
+                            encryption_algorithm=NoEncryption()
+                        )
+                        
+                        # Create temporary PEM files
+                        cert_file = tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pem')
+                        key_file = tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pem')
+                        
+                        cert_file.write(cert_pem)
+                        cert_file.close()
+                        
+                        key_file.write(key_pem)
+                        key_file.close()
+                        
+                        # Use tuple of (cert_file, key_file) for requests
+                        cert = (cert_file.name, key_file.name)
+                        
+                        print(f"[DEBUG] Converted .pfx to PEM format successfully")
+                        print(f"[DEBUG] Cert file: {cert_file.name}, Key file: {key_file.name}")
+                        
+                    except Exception as e:
+                        import traceback
+                        print(f"[DEBUG] Certificate loading error: {traceback.format_exc()}")
+                        return {
+                            "success": False,
+                            "message": f"❌ Failed to load certificate: {str(e)}",
+                            "error": f"Certificate error: {str(e)}"
+                        }
+                else:
+                    # For PEM files, use directly
+                    if cert_password:
+                        cert = (cert_path, cert_password)
+                    else:
+                        cert = cert_path
+            else:
+                return {
+                    "success": False,
+                    "message": "❌ Certificate path is required for certificate authentication",
+                    "error": "Please provide the certificate file path"
+                }
+        
         # Parse request body if provided (for POST/PUT/PATCH)
         request_body = None
         body_data = None
@@ -3412,7 +3610,9 @@ async def test_endpoint_connection(endpoint_data: dict):
                 url=url,
                 headers=headers,
                 data=body_data,
-                timeout=timeout_sec
+                timeout=timeout_sec,
+                cert=cert,
+                verify=False  # Disable SSL verification for testing
             )
         elif request_body:
             # Send as JSON
@@ -3421,7 +3621,9 @@ async def test_endpoint_connection(endpoint_data: dict):
                 url=url,
                 headers=headers,
                 json=request_body,
-                timeout=timeout_sec
+                timeout=timeout_sec,
+                cert=cert,
+                verify=False
             )
         else:
             # No body
@@ -3429,7 +3631,9 @@ async def test_endpoint_connection(endpoint_data: dict):
                 method=method,
                 url=url,
                 headers=headers,
-                timeout=timeout_sec
+                timeout=timeout_sec,
+                cert=cert,
+                verify=False
             )
         
         end_time = time.time()

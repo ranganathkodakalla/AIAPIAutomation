@@ -743,68 +743,65 @@ class AzureDevOpsService:
         request_section = ""
         if has_request_data:
             request_section = f"""
-<h3 style="color: #0078d4; margin-top: 30px;">📤 Request Payload</h3>
-<div style="background-color: #f5f5f5; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin: 10px 0;">
-<pre style="white-space: pre-wrap; font-family: 'Consolas', monospace; font-size: 12px; max-height: 400px; overflow-y: auto;">{request_json[:2000]}{('...' + chr(10) + '[Truncated - See attached JSON file for full payload]') if len(request_json) > 2000 else ''}</pre>
+<h3 style="color: #0078d4; margin: 15px 0 8px 0;">📤 Request Payload</h3>
+<div style="background-color: #f5f5f5; padding: 12px; border: 1px solid #ddd; border-radius: 4px; margin: 5px 0;">
+<pre style="white-space: pre-wrap; font-family: 'Consolas', monospace; font-size: 12px; max-height: 400px; overflow-y: auto; margin: 0;">{request_json[:2000]}{('...' + chr(10) + '[Truncated - See attached JSON file for full payload]') if len(request_json) > 2000 else ''}</pre>
 </div>"""
         
         # Build Response Payload section only if data exists
         response_section = ""
         if has_response_data:
             response_section = f"""
-<h3 style="color: #0078d4; margin-top: 30px;">📥 Response Payload</h3>
-<div style="background-color: #fff4f4; padding: 15px; border: 1px solid #ffcccc; border-radius: 4px; margin: 10px 0;">
-<pre style="white-space: pre-wrap; font-family: 'Consolas', monospace; font-size: 12px; max-height: 400px; overflow-y: auto;">{response_json[:2000]}{('...' + chr(10) + '[Truncated - See attached JSON file for full payload]') if len(response_json) > 2000 else ''}</pre>
+<h3 style="color: #0078d4; margin: 15px 0 8px 0;">📥 Response Payload</h3>
+<div style="background-color: #fff4f4; padding: 12px; border: 1px solid #ffcccc; border-radius: 4px; margin: 5px 0;">
+<pre style="white-space: pre-wrap; font-family: 'Consolas', monospace; font-size: 12px; max-height: 400px; overflow-y: auto; margin: 0;">{response_json[:2000]}{('...' + chr(10) + '[Truncated - See attached JSON file for full payload]') if len(response_json) > 2000 else ''}</pre>
 </div>"""
         
         # Build comprehensive HTML repro steps
         repro_steps = f"""<div style="font-family: 'Segoe UI', Arial, sans-serif;">
-<h2 style="color: #0078d4; border-bottom: 2px solid #0078d4; padding-bottom: 8px;">📋 Detailed Reproduction Steps</h2>
-
-<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+<h2 style="color: #0078d4; border-bottom: 2px solid #0078d4; padding-bottom: 8px; margin: 10px 0;">📋 Detailed Reproduction Steps</h2>
+<table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
 <tr style="background-color: #f3f2f1;">
-    <td style="padding: 10px; font-weight: bold; width: 200px; border: 1px solid #ddd;">API Name</td>
-    <td style="padding: 10px; border: 1px solid #ddd;">{api_name}</td>
+    <td style="padding: 8px; font-weight: bold; width: 200px; border: 1px solid #ddd;">API Name</td>
+    <td style="padding: 8px; border: 1px solid #ddd;">{api_name}</td>
 </tr>
 <tr>
-    <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">Base URL</td>
-    <td style="padding: 10px; border: 1px solid #ddd;">{base_url}</td>
+    <td style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">Base URL</td>
+    <td style="padding: 8px; border: 1px solid #ddd;">{base_url}</td>
 </tr>
 <tr style="background-color: #f3f2f1;">
-    <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">Endpoint</td>
-    <td style="padding: 10px; border: 1px solid #ddd;">{endpoint}</td>
+    <td style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">Endpoint</td>
+    <td style="padding: 8px; border: 1px solid #ddd;">{endpoint}</td>
 </tr>
 <tr>
-    <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">Environment</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><strong>{environment}</strong></td>
+    <td style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">Environment</td>
+    <td style="padding: 8px; border: 1px solid #ddd;"><strong>{environment}</strong></td>
 </tr>
 <tr style="background-color: #f3f2f1;">
-    <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">Failure Timestamp</td>
-    <td style="padding: 10px; border: 1px solid #ddd;">{failure_timestamp}</td>
+    <td style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">Failure Timestamp</td>
+    <td style="padding: 8px; border: 1px solid #ddd;">{failure_timestamp}</td>
 </tr>
 <tr>
-    <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">Test Severity</td>
-    <td style="padding: 10px; border: 1px solid #ddd;">{test_severity}</td>
+    <td style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">Test Severity</td>
+    <td style="padding: 8px; border: 1px solid #ddd;">{test_severity}</td>
 </tr>
 <tr style="background-color: #f3f2f1;">
-    <td style="padding: 10px; font-weight: bold; border: 1px solid #ddd;">Automated Test</td>
-    <td style="padding: 10px; border: 1px solid #ddd;">{automated_test}</td>
+    <td style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">Automated Test</td>
+    <td style="padding: 8px; border: 1px solid #ddd;">{automated_test}</td>
 </tr>
 </table>
-
-<h3 style="color: #0078d4; margin-top: 30px;">📝 Steps to Reproduce</h3>
-<div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #0078d4; margin: 10px 0;">
-<pre style="white-space: pre-wrap; font-family: 'Consolas', monospace;">{steps_to_reproduce}</pre>
+<h3 style="color: #0078d4; margin: 15px 0 8px 0;">📝 Steps to Reproduce</h3>
+<div style="background-color: #f9f9f9; padding: 12px; border-left: 4px solid #0078d4; margin: 5px 0;">
+<pre style="white-space: pre-wrap; font-family: 'Consolas', monospace; margin: 0;">{steps_to_reproduce}</pre>
 </div>
 {request_section}
 {response_section}
-<h3 style="color: #28a745; margin-top: 30px;">✅ Expected Results</h3>
-<div style="background-color: #e7f4e7; padding: 15px; border-left: 4px solid #28a745; margin: 10px 0;">
+<h3 style="color: #28a745; margin: 15px 0 8px 0;">✅ Expected Results</h3>
+<div style="background-color: #e7f4e7; padding: 12px; border-left: 4px solid #28a745; margin: 5px 0;">
 <p style="margin: 0;">{expected_results}</p>
 </div>
-
-<h3 style="color: #dc3545; margin-top: 30px;">❌ Actual Results</h3>
-<div style="background-color: #f8d7da; padding: 15px; border-left: 4px solid #dc3545; margin: 10px 0;">
+<h3 style="color: #dc3545; margin: 15px 0 8px 0;">❌ Actual Results</h3>
+<div style="background-color: #f8d7da; padding: 12px; border-left: 4px solid #dc3545; margin: 5px 0;">
 <p style="margin: 0;">{actual_results}</p>
 </div>
 </div>"""

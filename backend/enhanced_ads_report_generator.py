@@ -300,7 +300,7 @@ class EnhancedADSReportGenerator:
         .header {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 50px;
+            padding: 30px 50px;
             text-align: center;
             position: relative;
             overflow: hidden;
@@ -348,7 +348,7 @@ class EnhancedADSReportGenerator:
         
         .user-story-section {{
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 40px;
+            padding: 25px 40px;
             border-bottom: 3px solid #667eea;
         }}
         
@@ -356,7 +356,7 @@ class EnhancedADSReportGenerator:
             display: flex;
             justify-content: space-between;
             align-items: start;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
             gap: 20px;
         }}
@@ -406,8 +406,8 @@ class EnhancedADSReportGenerator:
         .user-story-details {{
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-top: 20px;
+            gap: 20px;
+            margin-top: 15px;
         }}
         
         @media (max-width: 968px) {{
@@ -418,7 +418,7 @@ class EnhancedADSReportGenerator:
         
         .detail-box {{
             background: white;
-            padding: 25px;
+            padding: 20px;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }}
@@ -498,7 +498,7 @@ class EnhancedADSReportGenerator:
         
         .tab-content {{
             display: none;
-            padding: 50px;
+            padding: 30px 50px;
             animation: fadeIn 0.4s;
         }}
         
@@ -583,14 +583,14 @@ class EnhancedADSReportGenerator:
         }}
         
         .section {{
-            margin-bottom: 50px;
+            margin-bottom: 30px;
         }}
         
         .section-title {{
             font-size: 2em;
             color: #667eea;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
             border-bottom: 3px solid #667eea;
             display: flex;
             align-items: center;
@@ -1037,23 +1037,7 @@ class EnhancedADSReportGenerator:
                 </div>
                 
                 <div class="section" style="margin-top: 40px;">
-                    <h3 style="color: #667eea; font-size: 1.5em; margin-bottom: 20px;">🏷️ O&M Classification</h3>
-                    <div class="metrics-grid">
-                        <div class="metric-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-                            <div class="metric-label">O&M Bugs</div>
-                            <div class="metric-value">{metrics['by_om'].get('O&M', 0)}</div>
-                            <div class="metric-subtext">Operations & Maintenance</div>
-                        </div>
-                        <div class="metric-card" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">
-                            <div class="metric-label">DME Bugs</div>
-                            <div class="metric-value">{metrics['by_om'].get('DME', 0)}</div>
-                            <div class="metric-subtext">Development, Maintenance & Enhancement</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="section" style="margin-top: 40px;">
-                    <h3 style="color: #667eea; font-size: 1.5em; margin-bottom: 20px;">🌍 Environment Distribution</h3>
+                    <h3 style="color: #667eea; font-size: 1.5em; margin-bottom: 20px;"> Environment Distribution</h3>
                     <div class="metrics-grid">
                         <div class="metric-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                             <div class="metric-label">Dev Environment</div>
@@ -1422,7 +1406,7 @@ class EnhancedADSReportGenerator:
                             <th>Bug ID</th>
                             <th>Title</th>
                             <th>Category</th>
-                            <th>O&M</th>
+                            <th>Reported by</th>
                             <th>Environment</th>
                             <th>State</th>
                             <th>Created Date</th>

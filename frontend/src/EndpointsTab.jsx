@@ -23,6 +23,8 @@ function EndpointsTab() {
     path: '/',
     auth_type: '',
     auth_token: '',
+    cert_path: '',
+    cert_password: '',
     headers: '',
     default_request_body: '',
     timeout_ms: 5000,
@@ -146,6 +148,8 @@ function EndpointsTab() {
         path: '/',
         auth_type: '',
         auth_token: '',
+        cert_path: '',
+        cert_password: '',
         headers: '',
         default_request_body: '',
         timeout_ms: 5000,
@@ -214,6 +218,8 @@ function EndpointsTab() {
       path: endpoint.path,
       auth_type: endpoint.auth_type || '',
       auth_token: endpoint.auth_token || '',
+      cert_path: endpoint.cert_path || '',
+      cert_password: endpoint.cert_password || '',
       headers: endpoint.headers || '',
       default_request_body: endpoint.default_request_body || '',
       timeout_ms: endpoint.timeout_ms,
@@ -457,30 +463,61 @@ function EndpointsTab() {
                   placeholder="/api/v1/resource"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Auth Type</label>
-                  <select
-                    value={endpointForm.auth_type}
-                    onChange={(e) => setEndpointForm({ ...endpointForm, auth_type: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="">None</option>
-                    <option value="bearer">Bearer Token</option>
-                    <option value="api_key">API Key</option>
-                    <option value="basic">Basic Auth</option>
-                  </select>
-                </div>
-                <div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Auth Type</label>
+                <select
+                  value={endpointForm.auth_type}
+                  onChange={(e) => setEndpointForm({ ...endpointForm, auth_type: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">None</option>
+                  <option value="bearer">Bearer Token</option>
+                  <option value="api_key">API Key</option>
+                  <option value="basic">Basic Auth</option>
+                  <option value="certificate">Client Certificate (with Password)</option>
+                </select>
+              </div>
+              
+              {/* Show Auth Token field for bearer, api_key, and basic auth */}
+              {endpointForm.auth_type && endpointForm.auth_type !== 'certificate' && (
+                <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Auth Token</label>
                   <input
                     type="password"
                     value={endpointForm.auth_token}
                     onChange={(e) => setEndpointForm({ ...endpointForm, auth_token: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    placeholder="Enter your authentication token"
                   />
                 </div>
-              </div>
+              )}
+              
+              {/* Show Certificate fields when certificate auth is selected */}
+              {endpointForm.auth_type === 'certificate' && (
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Certificate Path</label>
+                    <input
+                      type="text"
+                      value={endpointForm.cert_path}
+                      onChange={(e) => setEndpointForm({ ...endpointForm, cert_path: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="/path/to/certificate.pfx or .p12"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Full path to .pfx or .p12 certificate file</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Certificate Password</label>
+                    <input
+                      type="password"
+                      value={endpointForm.cert_password}
+                      onChange={(e) => setEndpointForm({ ...endpointForm, cert_password: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="Enter certificate password"
+                    />
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Expected Status</label>
